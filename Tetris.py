@@ -414,6 +414,12 @@ class Graph():
 	graphMatrix = []		# 图像面板矩阵
 	nextBlockMatrix = []	# 下一方块图像面板矩阵
 
+	# 用于存放暂停提示框
+	pauseBox = {
+		'rectangle': [], 
+		'text': []
+	}
+
 	scoreText = None		# 记分板 (面板)
 
 	cv = Canvas(
@@ -489,6 +495,26 @@ class Graph():
 			fill = 'white'
 		)
 
+		# 暂停提示框
+		self.pauseBox['rectangle'].append(self.cv.create_rectangle(
+			380, 380, 600, 430, 
+			outline = 'black', 
+			fill = 'black'
+		))
+		self.pauseBox['rectangle'].append(self.cv.create_rectangle(
+			382, 382, 598, 428, 
+			outline = 'black', 
+			fill = 'black'
+		))
+		self.pauseBox['text'].append(self.cv.create_text(
+			380, 403, 
+			text = """
+				         Pause
+				Press P to continue
+			""", 
+			fill = 'black'
+		))
+
 		self.cv.pack()
 
 	# 图像面板矩阵初始化
@@ -553,6 +579,31 @@ class Graph():
 						fill = 'black'
 					)
 
+	# 暂停提示
+	def showPauseBox(self, swich):
+		if swich == 'On':
+			for e in self.pauseBox['rectangle']:
+				self.cv.itemconfig(
+					e, 
+					outline = 'lightgreen', 
+					fill = 'black'
+				)
+			self.cv.itemconfig(
+				self.pauseBox['text'][0], 
+				fill = 'lightgreen'
+			)
+		else:
+			for e in self.pauseBox['rectangle']:
+				self.cv.itemconfig(
+					e, 
+					outline = 'black', 
+					fill = 'black'
+				)
+			self.cv.itemconfig(
+				self.pauseBox['text'][0], 
+				fill = 'black'
+			)
+
 	# 显示分数
 	def showScore(self):
 		self.cv.itemconfig(
@@ -577,6 +628,12 @@ class Graph():
 		if operationInfo['isBottom'] == 1:
 			self.draw()
 			self.showScore()
+
+		# 显示暂停提示框
+		if self.control.pause == True:
+			self.showPauseBox('On')
+		else:
+			self.showPauseBox('Off')
 
 	# 自动下落函数
 	def autoRun(self):
