@@ -4,6 +4,7 @@ import threading
 import os
 from tkinter import *
 import tkinter.messagebox as messagebox
+import tkinter.font as tkFont 
 
 # 核心模块
 class Core():
@@ -314,7 +315,9 @@ class Control():
 	block = None			# 用于保存当前方块信息
 	nextBlockSeed = None	# 用于保存下一方块种子
 
-	pause = False 			# 存放暂停状态信息
+	stopThread = True		# 控制自动下落线程的开关
+	pause = False 			# 用于判断是否为暂停状态
+	start = False 			# 用于判断游戏是否已开始
 
 	# 初始化
 	def __init__(self, core):
@@ -331,41 +334,53 @@ class Control():
 			'Exit': False
 		}
 
-		# 方向操作
-		if self.pause == False:
-			# WASD 控制方向
-			wasd = {
-				'w': 'Up', 
-				'a': 'Left', 
-				's': 'Down', 
-				'd': 'Right'
-			}
-			if key in wasd:
-				key = wasd[key]
-			# 移动操作
-			if key == 'Right' or \
-				key == 'Left' or \
-				key == 'Down':
-				operationInfo['isBottom'] = self.core.move(self.block, key, autoDown)
-				if operationInfo['isBottom'] == 1:
-					self.core.rmRow()
-					operationInfo['isBottom'] = 1
-					return operationInfo
-			# 旋转操作
-			elif key == 'Up':
-				self.core.rotate(self.block)
+		# 游戏操作
+		if self.start == True:
+			# 方向操作
+			if self.pause == False:
+				# WASD 控制方向
+				wasd = {
+					'w': 'Up', 
+					'a': 'Left', 
+					's': 'Down', 
+					'd': 'Right'
+				}
+				if key in wasd:
+					key = wasd[key]
+				# 移动操作
+				if key == 'Right' or \
+					key == 'Left' or \
+					key == 'Down':
+					operationInfo['isBottom'] = self.core.move(self.block, key, autoDown)
+					if operationInfo['isBottom'] == 1:
+						self.core.rmRow()
+						operationInfo['isBottom'] = 1
+						return operationInfo
+				# 旋转操作
+				elif key == 'Up':
+					self.core.rotate(self.block)
 
-		# 暂停
-		if key == 'p':
-			if self.pause == True:
-				self.pause = False
-			else:
-				self.pause = True
+			# 暂停
+			if key == 'p':
+				if self.pause == True:
+					self.stopThread = False
+					self.pause = False
+				else:
+					self.stopThread = True
+					self.pause = True
 
 		# 退出
 		if key == 'Escape':
-			self.pause = True
+			self.stopThread = True
+			if self.start == True:
+				self.pause = True
 			operationInfo['Exit'] = True
+
+		# 开始游戏
+		if key == 'n' or key == 'N':
+			self.pause = False
+			self.stopThread = False
+			self.start = True
 			
 		return operationInfo
 
@@ -409,21 +424,31 @@ class Graph():
 
 	control = None			# 用于保存控制对象
 
+	startRun = False 		# 用于判断启动动画是否播放过
+
 	autoFallThread = None	# 用于保存自动下落线程
 
 	graphMatrix = []		# 图像面板矩阵
 	nextBlockMatrix = []	# 下一方块图像面板矩阵
 
-	pauseBox = []			# 用于存放暂停提示框
-
-	scoreText = None		# 记分板 (面板)
-
+	# 主画布
 	cv = Canvas(
 		mainPanel, 
 		bg = 'black', 
 		width = 640, 
 		height = 480
-		)
+	)
+
+	gameWindow = None		# 用于存放游戏界面
+	gameCv = None			# 用于存放游戏界面画布
+	pauseBox = None			# 用于存放暂停提示框
+	startWindow = None		# 用于存放启动页面
+	startCv = None			# 用于存放启动画布
+	menuWindow = None		# 用于存放菜单页面
+	scoreText = None		# 记分板面板
+
+	titleFont = tkFont.Font(size = 25)	# Title 字号
+	itemFont = tkFont.Font(size = 15)	# Item 字号
 
 	def __init__(self, control):
 
@@ -449,72 +474,200 @@ class Graph():
 		
 	# 界面初始化
 	def initGraph(self):
+		self.createStartWindow()	# 创建启动页面
+		self.createMenuWindow()		# 创建菜单页面
+		self.createGameWindow()		# 创建游戏界面
+		self.createPauseBox()		# 创建暂停提示框
+		self.cv.pack()
 
+	# 创建启动页面
+	def createStartWindow(self):
+		self.startCv = Canvas(
+			self.mainPanel, 
+			bg = 'black', 
+			width = 640, 
+			height = 480
+		)
+		self.startCv.create_rectangle(
+			80, 100, 560, 200,  
+			outline = 'white', 
+			fill = 'black'
+		)
+		self.startCv.create_rectangle(
+			83, 103, 557, 197,   
+			outline = 'white', 
+			fill = 'black'
+		)
+		self.startCv.create_rectangle(
+			40, 400, 600, 420, 
+			outline = 'white', 
+			fill = 'black'
+		)
+		self.startCv.create_text(
+			310, 130, 
+			text = 'Tetris', 
+			font = self.titleFont, 
+			fill = 'white'
+		)
+		self.startCv.create_text(
+			310, 180, 
+			text = 'Loading...', 
+			font = self.itemFont, 
+			fill = 'white'
+		)
+		self.startWindow = self.cv.create_window(
+			320, 240, 
+			window = self.startCv, 
+			state = HIDDEN
+		)
+
+	# 播放启动动画
+	def runStartWindow(self):
+		temp = []
+		self.cv.itemconfig(
+			self.startWindow, 
+			state = NORMAL
+		)
+		for i in range(41, 600):
+			temp.append(self.startCv.create_line(
+				i, 401, i, 420,  
+				fill = 'yellow'
+			))
+			time.sleep(0.001)
+		time.sleep(1)
+		self.cv.itemconfig(
+			self.startWindow, 
+			state = HIDDEN
+		)
+		self.cv.itemconfig(
+			self.menuWindow, 
+			state = NORMAL
+		)
+		for i in temp:
+			self.startCv.delete(i)
+
+	# 创建菜单页面
+	def createMenuWindow(self):
+		menuCv = Canvas(
+			self.mainPanel, 
+			bg = 'black', 
+			width = 640, 
+			height = 480
+		)
+		menuCv.create_rectangle(
+			80, 100, 560, 200,  
+			outline = 'white', 
+			fill = 'black'
+		)
+		menuCv.create_rectangle(
+			83, 103, 557, 197,   
+			outline = 'white', 
+			fill = 'black'
+		)
+		menuCv.create_text(
+			310, 130, 
+			text = 'Tetris', 
+			font = self.titleFont, 
+			fill = 'white'
+		)
+		menuCv.create_text(
+			310, 180, 
+			text = 'Menu', 
+			font = self.itemFont, 
+			fill = 'white'
+		)
+		menuCv.create_text(
+			310, 250, 
+			text = """\n\n(N)New game\n\n(H)Help""", 
+			font = self.itemFont, 
+			fill = 'yellow'
+		)
+		self.menuWindow = self.cv.create_window(
+			320, 240, 
+			window = menuCv, 
+			state = HIDDEN
+		)
+
+	# 创建游戏界面
+	def createGameWindow(self):
+		self.gameCv = Canvas(
+			self.mainPanel, 
+			bg = 'black', 
+			width = 640, 
+			height = 480
+		)
 		# 双线主方框
-		self.cv.create_rectangle(
+		self.gameCv.create_rectangle(
 			36, 36, 44 + 15 * 20, 44 + 20 * 20, 
 			outline = 'lightgray', 
 			fill = 'black'
 		)
-		self.cv.create_rectangle(
+		self.gameCv.create_rectangle(
 			39, 39, 41 + 15 * 20, 41 + 20 * 20,
 			outline = 'lightgray', 
 			fill = 'black'
 		)
 
 		# 下一方块提示框
-		self.cv.create_rectangle(
+		self.gameCv.create_rectangle(
 			400, 40, 580, 140, 
 			outline = 'white', 
 			fill = 'black'
 		)
-		self.cv.create_text(
+		self.gameCv.create_text(
 			425, 50, 
 			text = 'Next:', 
 			fill = 'white'
 		)
 
 		# 记分板
-		self.cv.create_rectangle(
+		self.gameCv.create_rectangle(
 			400, 200, 580, 250, 
 			outline = 'white', 
 			fill = 'black'
 		)
-		self.cv.create_text(
+		self.gameCv.create_text(
 			425, 210, 
 			text = 'Score:', 
 			fill = 'white'
 		)
-		self.scoreText = self.cv.create_text(
+		self.scoreText = self.gameCv.create_text(
 			475, 210, 
 			text = str(self.control.getParameter()['score']), 
 			fill = 'white'
 		)
+		self.gameWindow = self.cv.create_window(
+			320, 240, 
+			window = self.gameCv, 
+			state = HIDDEN
+		)
 
-		# 暂停提示框
-		self.pauseBox.append(self.cv.create_rectangle(
-			380, 380, 600, 430, 
+	# 创建暂停提示框
+	def createPauseBox(self):
+		pauseBoxCv = Canvas(
+			self.mainPanel, 
+			bg = 'black', 
+			width = 220, 
+			height = 50
+		)
+		pauseBoxCv.create_rectangle(
+			4, 4, 219, 49, 
 			outline = 'lightgreen', 
-			fill = 'black', 
-			state = HIDDEN
-		))
-		self.pauseBox.append(self.cv.create_rectangle(
-			382, 382, 598, 428, 
-			outline = 'lightgreen', 
-			fill = 'black', 
-			state = HIDDEN
-		))
-		self.pauseBox.append(self.cv.create_text(
-			380, 403, 
+			fill = 'black'
+		)
+		pauseBoxCv.create_text(
+			0, 25, 
 			text = """
 				         Pause
 				Press P to continue
 			""", 
-			fill = 'lightgreen', 
+			fill = 'lightgreen'
+		)
+		self.pauseBox = self.gameCv.create_window(
+			490, 405, 
+			window = pauseBoxCv, 
 			state = HIDDEN
-		))
-
-		self.cv.pack()
+		)
 
 	# 图像面板矩阵初始化
 	def initGraphMatrix(self):
@@ -523,7 +676,7 @@ class Graph():
 		for i in range(parameter['row']):	# 矩阵外围一圈为缓冲区
 			self.graphMatrix.append([])
 			for j in range(parameter['column']):
-				rectangle = self.cv.create_rectangle(
+				rectangle = self.gameCv.create_rectangle(
 					40 + j * 20, 40 + i * 20, 60 + j * 20, 60 + i * 20, 
 					outline = 'black', 
 					fill = 'cyan', 
@@ -536,7 +689,7 @@ class Graph():
 		for i in range(4):
 			self.nextBlockMatrix.append([])
 			for j in range(4):
-				rectangle = self.cv.create_rectangle(
+				rectangle = self.gameCv.create_rectangle(
 					x + j * 20, y + i * 20, x + 20 + j * 20, y + 20 + i * 20, 
 					outline = 'black', 
 					fill = 'cyan', 
@@ -550,12 +703,12 @@ class Graph():
 		for i in range(parameter['row']):
 			for j in range(parameter['column']):
 				if parameter['mainMatrix'][i + 1][j + 1] == 1:
-					self.cv.itemconfig(
+					self.gameCv.itemconfig(
 						self.graphMatrix[i][j], 
 						state = NORMAL
 					)
 				elif parameter['mainMatrix'][i + 1][j + 1] == 0:
-					self.cv.itemconfig(
+					self.gameCv.itemconfig(
 						self.graphMatrix[i][j], 
 						state = HIDDEN
 					)
@@ -566,12 +719,12 @@ class Graph():
 		for i in range(4):
 			for j in range(4):
 				if BlockMatrix[i][j] == 1:
-					self.cv.itemconfig(
+					self.gameCv.itemconfig(
 						self.nextBlockMatrix[i][j], 
 						state = NORMAL
 					)
 				else:
-					self.cv.itemconfig(
+					self.gameCv.itemconfig(
 						self.nextBlockMatrix[i][j], 
 						state = HIDDEN
 					)
@@ -579,21 +732,19 @@ class Graph():
 	# 暂停提示
 	def showPauseBox(self, swich):
 		if swich == 'On':
-			for e in self.pauseBox:
-				self.cv.itemconfig(
-					e, 
-					state = NORMAL
-				)
+			self.gameCv.itemconfig(
+				self.pauseBox, 
+				state = NORMAL
+			)
 		else:
-			for e in self.pauseBox:
-				self.cv.itemconfig(
-					e, 
-					state = HIDDEN
-				)
+			self.gameCv.itemconfig(
+				self.pauseBox, 
+				state = HIDDEN
+			)
 
 	# 显示分数
 	def showScore(self):
-		self.cv.itemconfig(
+		self.gameCv.itemconfig(
 			self.scoreText,  
 			text = str(self.control.getParameter()['score']), 
 			fill = 'white'
@@ -604,28 +755,47 @@ class Graph():
 		operationInfo = self.control.operation(event.keysym)
 		self.draw()
 
+		# 开始
+		if self.control.start == True:
+			self.cv.itemconfig(
+				self.menuWindow,  
+				state = HIDDEN
+			)
+			self.cv.itemconfig(
+				self.gameWindow,  
+				state = NORMAL
+			)
+
+			# 方块已下降至最底
+			if operationInfo['isBottom'] == 1:
+				self.draw()
+				self.showScore()
+
+			# 显示暂停提示框
+			if self.control.pause == True:
+				self.showPauseBox('On')
+			else:
+				self.showPauseBox('Off')
+
 		# 询问是否退出
 		if operationInfo['Exit'] == True:
 			if messagebox.askokcancel("Verify",'Do you really want to quit?'):
 				os._exit(0)
 			else:
-				self.control.pause = False
-
-		# 方块已下降至最底
-		if operationInfo['isBottom'] == 1:
-			self.draw()
-			self.showScore()
-
-		# 显示暂停提示框
-		if self.control.pause == True:
-			self.showPauseBox('On')
-		else:
-			self.showPauseBox('Off')
+				if self.control.start == True:
+					self.control.pause = False
+					self.control.stopThread = False
+					self.showPauseBox('Off')
 
 	# 自动下落函数
 	def autoRun(self):
 		while True:
-			while self.control.pause == False:
+			if self.startRun == False:
+				self.runStartWindow()
+				self.startRun = True
+			while self.control.stopThread == True:
+				time.sleep(0.001)
+			while self.control.pause == False and self.control.start == True:
 				self.draw()
 				operationInfo = self.control.operation('Down', autoDown = True)
 				if operationInfo['isBottom'] == 1:		# 方块已下降至最底
