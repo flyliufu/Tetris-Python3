@@ -14,7 +14,7 @@ class Core():
 	matrixColumn = column + mainMatrixBuffer	# 矩阵列数
 
 	score = 0			# 分数
-	interval = 0.1		# 方块下落速度
+	interval = 0.5		# 方块下落速度
 
 	mainMatrix = []		# 主矩阵
 
@@ -414,11 +414,7 @@ class Graph():
 	graphMatrix = []		# 图像面板矩阵
 	nextBlockMatrix = []	# 下一方块图像面板矩阵
 
-	# 用于存放暂停提示框
-	pauseBox = {
-		'rectangle': [], 
-		'text': []
-	}
+	pauseBox = []			# 用于存放暂停提示框
 
 	scoreText = None		# 记分板 (面板)
 
@@ -496,23 +492,26 @@ class Graph():
 		)
 
 		# 暂停提示框
-		self.pauseBox['rectangle'].append(self.cv.create_rectangle(
+		self.pauseBox.append(self.cv.create_rectangle(
 			380, 380, 600, 430, 
-			outline = 'black', 
-			fill = 'black'
+			outline = 'lightgreen', 
+			fill = 'black', 
+			state = HIDDEN
 		))
-		self.pauseBox['rectangle'].append(self.cv.create_rectangle(
+		self.pauseBox.append(self.cv.create_rectangle(
 			382, 382, 598, 428, 
-			outline = 'black', 
-			fill = 'black'
+			outline = 'lightgreen', 
+			fill = 'black', 
+			state = HIDDEN
 		))
-		self.pauseBox['text'].append(self.cv.create_text(
+		self.pauseBox.append(self.cv.create_text(
 			380, 403, 
 			text = """
 				         Pause
 				Press P to continue
 			""", 
-			fill = 'black'
+			fill = 'lightgreen', 
+			state = HIDDEN
 		))
 
 		self.cv.pack()
@@ -526,8 +525,9 @@ class Graph():
 			for j in range(parameter['column']):
 				rectangle = self.cv.create_rectangle(
 					40 + j * 20, 40 + i * 20, 60 + j * 20, 60 + i * 20, 
-					outline = '', 
-					fill = 'black'
+					outline = 'black', 
+					fill = 'cyan', 
+					state = HIDDEN
 				)
 				self.graphMatrix[i].append(rectangle)
 
@@ -538,8 +538,9 @@ class Graph():
 			for j in range(4):
 				rectangle = self.cv.create_rectangle(
 					x + j * 20, y + i * 20, x + 20 + j * 20, y + 20 + i * 20, 
-					outline = '', 
-					fill = 'black'
+					outline = 'black', 
+					fill = 'cyan', 
+					state = HIDDEN
 				)
 				self.nextBlockMatrix[i].append(rectangle)
 
@@ -551,14 +552,12 @@ class Graph():
 				if parameter['mainMatrix'][i + 1][j + 1] == 1:
 					self.cv.itemconfig(
 						self.graphMatrix[i][j], 
-						outline = 'black', 
-						fill = 'cyan'
+						state = NORMAL
 					)
 				elif parameter['mainMatrix'][i + 1][j + 1] == 0:
 					self.cv.itemconfig(
 						self.graphMatrix[i][j], 
-						outline = 'black', 
-						fill = 'black'
+						state = HIDDEN
 					)
 
 	# 下一方块提示显示
@@ -569,40 +568,28 @@ class Graph():
 				if BlockMatrix[i][j] == 1:
 					self.cv.itemconfig(
 						self.nextBlockMatrix[i][j], 
-						outline = 'black', 
-						fill = 'cyan'
+						state = NORMAL
 					)
 				else:
 					self.cv.itemconfig(
 						self.nextBlockMatrix[i][j], 
-						outline = 'black', 
-						fill = 'black'
+						state = HIDDEN
 					)
 
 	# 暂停提示
 	def showPauseBox(self, swich):
 		if swich == 'On':
-			for e in self.pauseBox['rectangle']:
+			for e in self.pauseBox:
 				self.cv.itemconfig(
 					e, 
-					outline = 'lightgreen', 
-					fill = 'black'
+					state = NORMAL
 				)
-			self.cv.itemconfig(
-				self.pauseBox['text'][0], 
-				fill = 'lightgreen'
-			)
 		else:
-			for e in self.pauseBox['rectangle']:
+			for e in self.pauseBox:
 				self.cv.itemconfig(
 					e, 
-					outline = 'black', 
-					fill = 'black'
+					state = HIDDEN
 				)
-			self.cv.itemconfig(
-				self.pauseBox['text'][0], 
-				fill = 'black'
-			)
 
 	# 显示分数
 	def showScore(self):
