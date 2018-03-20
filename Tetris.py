@@ -325,19 +325,32 @@ class Control():
 	# 操作函数
 	def operation(self, key, autoDown = False):
 
-		# 用于判断方块是否到底
-		isBottom = None
+		# 操作反馈信息
+		operationInfo = {
+			'isBottom': None, 
+			'Exit': False
+		}
 
-		# 移动操作
+		# 方向操作
 		if self.pause == False:
+			# WASD 控制方向
+			wasd = {
+				'w': 'Up', 
+				'a': 'Left', 
+				's': 'Down', 
+				'd': 'Right'
+			}
+			if key in wasd:
+				key = wasd[key]
 			# 移动操作
 			if key == 'Right' or \
 				key == 'Left' or \
 				key == 'Down':
-				isBottom = self.core.move(self.block, key, autoDown)
-				if isBottom == 1:
+				operationInfo['isBottom'] = self.core.move(self.block, key, autoDown)
+				if operationInfo['isBottom'] == 1:
 					self.core.rmRow()
-					return 1
+					operationInfo['isBottom'] = 1
+					return operationInfo
 			# 旋转操作
 			elif key == 'Up':
 				self.core.rotate(self.block)
@@ -348,7 +361,13 @@ class Control():
 				self.pause = False
 			else:
 				self.pause = True
-		return
+
+		# 退出
+		if key == 'Escape':
+			self.pause = True
+			operationInfo['Exit'] = True
+			
+		return operationInfo
 
 	# 激活下一方块
 	def nextBlock(self):
@@ -544,10 +563,18 @@ class Graph():
 
 	# 键盘事件处理函数
 	def onKeyboardEvent(self, event):
-		isBottom = None		# 用于判断方块是否到底
-		isBottom = self.control.operation(event.keysym)
+		operationInfo = self.control.operation(event.keysym)
 		self.draw()
-		if isBottom == 1:		# 方块已下降至最底
+
+		# 询问是否退出
+		if operationInfo['Exit'] == True:
+			if messagebox.askokcancel("Verify",'Do you really want to quit?'):
+				os._exit(0)
+			else:
+				self.control.pause = False
+
+		# 方块已下降至最底
+		if operationInfo['isBottom'] == 1:
 			self.draw()
 			self.showScore()
 
@@ -556,9 +583,8 @@ class Graph():
 		while True:
 			while self.control.pause == False:
 				self.draw()
-				isBottom = None		# 用于判断方块是否到底
-				isBottom = self.control.operation('Down', autoDown = True)
-				if isBottom == 1:		# 方块已下降至最底
+				operationInfo = self.control.operation('Down', autoDown = True)
+				if operationInfo['isBottom'] == 1:		# 方块已下降至最底
 					self.draw()
 					self.showScore()
 					if self.control.getIsLose() != True:		# 未输
