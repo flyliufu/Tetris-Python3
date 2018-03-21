@@ -14,8 +14,9 @@ class Core():
 	matrixRow = row + mainMatrixBuffer			# 矩阵行数
 	matrixColumn = column + mainMatrixBuffer	# 矩阵列数
 
-	score = 0			# 分数
-	interval = 0.5		# 方块下落速度
+	score = 0					# 分数
+	initInterval = 0.5			# 方块下落初始速度
+	interval = initInterval 	# 方块下落当前速度
 
 	mainMatrix = []		# 主矩阵
 
@@ -288,8 +289,9 @@ class Core():
 			for i in range(row, 0, -1):
 				for j in range(1, self.column + 1):
 					self.mainMatrix[i][j] = self.mainMatrix[i - 1][j]
-			self.score += 1
-			self.interval /= 2 ** int(self.score / 10)
+			self.score += 1		# 分数增加
+			if self.interval > 0.1:
+				self.interval = self.initInterval - 0.1 * int(self.score / 10)	# 自动下落时间间隔衰减
 			self.rmRow(startRow = row)
 		elif row == 0 or row == -1:
 			return
