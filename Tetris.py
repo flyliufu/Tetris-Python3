@@ -320,6 +320,7 @@ class Control():
 	stopThread = True		# 控制自动下落线程的开关
 	pause = False 			# 用于判断是否为暂停状态
 	start = False 			# 用于判断游戏是否已开始
+	helpPage = False 		# 用于判断帮助页是否打开
 
 	# 初始化
 	def __init__(self, core):
@@ -447,6 +448,7 @@ class Graph():
 	startWindow = None		# 用于存放启动页面
 	startCv = None			# 用于存放启动画布
 	menuWindow = None		# 用于存放菜单页面
+	helpWindow = None		# 用于存放帮助页面
 	scoreText = None		# 记分板面板
 
 	titleFont = tkFont.Font(size = 25)	# Title 字号
@@ -479,6 +481,7 @@ class Graph():
 		self.createStartWindow()	# 创建启动页面
 		self.createMenuWindow()		# 创建菜单页面
 		self.createGameWindow()		# 创建游戏界面
+		self.createHelpPage()
 		self.createPauseBox()		# 创建暂停提示框
 		self.cv.pack()
 
@@ -587,6 +590,44 @@ class Graph():
 		self.menuWindow = self.cv.create_window(
 			320, 240, 
 			window = menuCv, 
+			state = HIDDEN
+		)
+
+	# 创建帮助页面
+	def createHelpPage(self):
+		helpCv = Canvas(
+			self.mainPanel, 
+			bg = 'black', 
+			width = 640, 
+			height = 480
+		)
+		helpCv.create_text(
+			310, 50, 
+			text = "帮助", 
+			font = self.titleFont, 
+			fill = 'yellow'
+		)
+		helpCv.create_text(
+			300, 200, 
+			text = """
+			\n ↑ ← ↓ → 或 W A S D : 用于控制方块移动方向
+			\n N : 开始新游戏
+			\n H : 帮助
+			\n P : 暂停游戏
+			\n Esc : 退出游戏
+			""", 
+			font = self.itemFont, 
+			fill = 'yellow'
+		)
+		helpCv.create_text(
+			300, 400, 
+			text = "Press any key to return...", 
+			font = self.itemFont, 
+			fill = 'yellow'
+		)
+		self.helpWindow = self.cv.create_window(
+			320, 240, 
+			window = helpCv, 
 			state = HIDDEN
 		)
 
@@ -754,17 +795,41 @@ class Graph():
 
 	# 键盘事件处理函数
 	def onKeyboardEvent(self, event):
+
+		# 预先捕捉的事件处理
+		if self.control.start == False:		# 进入帮助页
+			if self.control.helpPage == False:
+				if event.keysym == 'h' or event.keysym == 'H':
+					self.control.helpPage = True
+					self.cv.itemconfig(
+						self.helpWindow, 
+						state = NORMAL
+					)
+					return
+			if self.control.helpPage == True:	# 退出帮助页
+				self.control.helpPage = False
+				self.cv.itemconfig(
+					self.menuWindow, 
+					state = NORMAL
+				)
+				self.cv.itemconfig(
+					self.helpWindow, 
+					state = HIDDEN
+				)
+				return
+
+		# 交给控制模块处理
 		operationInfo = self.control.operation(event.keysym)
 		self.draw()
 
 		# 开始
 		if self.control.start == True:
 			self.cv.itemconfig(
-				self.menuWindow,  
+				self.menuWindow, 
 				state = HIDDEN
 			)
 			self.cv.itemconfig(
-				self.gameWindow,  
+				self.gameWindow, 
 				state = NORMAL
 			)
 
