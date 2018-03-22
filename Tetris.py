@@ -919,6 +919,7 @@ class Graph():
 		if self.control.start == True:
 
 			self.drawNext(self.control.generateNextBlock())
+			self.showScore()
 
 			self.cv.itemconfig(
 				self.menuWindow, 
