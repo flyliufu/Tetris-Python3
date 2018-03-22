@@ -2,9 +2,12 @@ import time
 import random
 import threading
 import os
+import ast
 from tkinter import *
 import tkinter.messagebox as messagebox
-import tkinter.font as tkFont 
+import tkinter.font as tkFont
+from tkinter.filedialog import askdirectory
+from tkinter import filedialog
 
 # 核心模块
 class Core():
@@ -314,8 +317,16 @@ class Core():
 class Control():
 
 	core = None				# 用于保存核心对象
-	block = None			# 用于保存当前方块信息
-	nextBlockSeed = None	# 用于保存下一方块种子
+	block = {				# 用于保存当前方块信息
+		'x': None, 
+		'y': None, 
+		'type': None, 
+		'state': None
+	}
+	nextBlockSeed = {		# 用于保存下一方块种子
+		'type': None, 
+		'state': None
+	}
 
 	stopThread = True		# 控制自动下落线程的开关
 	pause = False 			# 用于判断是否为暂停状态
@@ -346,7 +357,11 @@ class Control():
 					'w': 'Up', 
 					'a': 'Left', 
 					's': 'Down', 
-					'd': 'Right'
+					'd': 'Right', 
+					'W': 'Up', 
+					'A': 'Left', 
+					'S': 'Down', 
+					'D': 'Right'
 				}
 				if key in wasd:
 					key = wasd[key]
@@ -372,6 +387,11 @@ class Control():
 					self.stopThread = True
 					self.pause = True
 
+			if key == '\x13':
+				self.stopThread = True
+				self.pause = True
+				File().save(str(self.getAllInfo()))
+
 		# 退出
 		if key == 'Escape':
 			self.stopThread = True
@@ -381,9 +401,15 @@ class Control():
 
 		# 开始游戏
 		if key == 'n' or key == 'N':
-			self.pause = False
-			self.stopThread = False
-			self.start = True
+			if self.start == False:
+				self.pause = False
+				self.stopThread = False
+				self.start = True
+
+		# 加载存档
+		if key == 'l' or key == 'L':
+			if self.start == False:
+				File().load(self.core, self)
 			
 		return operationInfo
 
@@ -411,9 +437,67 @@ class Control():
 			'mainMatrix': self.core.mainMatrix
 		}
 
+	# 获取用于保存文件的所有参数
+	def getAllInfo(self):
+		return {
+			'mainMatrix': self.core.mainMatrix, 
+			'score': self.core.score, 
+			'interval': self.core.interval, 
+			'block': self.block, 
+			'nextBlockSeed': self.nextBlockSeed, 
+			'stopThread': self.stopThread, 
+			'pause': self.pause, 
+			'start': self.start, 
+			'helpPage': self.helpPage
+		}
+
 	# 返回是否输信息
 	def getIsLose(self):
 		return self.core.isLose()
+
+
+# 文件模块
+class File():
+
+	# 读档
+	def load(self, core, control):
+		path = filedialog.askopenfilename()		# 获取存档路径
+		try:
+			if path:
+				with open(path, 'r') as f:
+					content = ast.literal_eval(f.read())	# 读取文件
+
+					# 写入数据
+					try:
+						for i in range(1, core.row + 1):
+							for j in range(1, core.column + 1):
+								core.mainMatrix[i][j] = content['mainMatrix'][i][j]
+						core.score = content['score']
+						core.interval = content['interval']
+						control.block['x'] = content['block']['x']
+						control.block['y'] = content['block']['y']
+						control.block['type'] = content['block']['type']
+						control.block['state'] = content['block']['state']
+						control.nextBlockSeed['type'] = content['nextBlockSeed']['type']
+						control.nextBlockSeed['state'] = content['nextBlockSeed']['state']
+						control.stopThread = True
+						control.pause = True
+						control.start = True
+					except BaseException as err:
+						messagebox.showerror('Error', 'Unknown error')	# 游戏参数错误
+		except BaseException as e:
+			messagebox.showerror('Error', e)	# 文件读写错误
+
+	# 存档
+	def save(self, content):
+		saveAs = filedialog.asksaveasfile()
+		if saveAs:
+			try:
+				with open(saveAs.name, 'w') as f:
+					f.write(content)
+			except BaseException as e:
+				messagebox.showerror('Error', e)
+
 
 
 # 图像模块
@@ -583,7 +667,7 @@ class Graph():
 		)
 		menuCv.create_text(
 			310, 250, 
-			text = """\n\n(N)New game\n\n(H)Help""", 
+			text = """\n\n(N)New game\n\n(H)Help\n\n(L)Load""", 
 			font = self.itemFont, 
 			fill = 'yellow'
 		)
@@ -610,11 +694,13 @@ class Graph():
 		helpCv.create_text(
 			300, 200, 
 			text = """
-			\n ↑ ← ↓ → 或 W A S D : 用于控制方块移动方向
-			\n N : 开始新游戏
-			\n H : 帮助
-			\n P : 暂停游戏
-			\n Esc : 退出游戏
+			\n ↑ ← ↓ → : .......用于控制方块移动方向
+			\n N : ...........................开始新游戏
+			\n H : .................................帮助
+			\n P : .............................暂停游戏
+			\n Esc : ...........................退出游戏
+			\n L : .............................加载存档
+			\n Ctrl + S : ......................保存游戏
 			""", 
 			font = self.itemFont, 
 			fill = 'yellow'
@@ -795,7 +881,7 @@ class Graph():
 
 	# 键盘事件处理函数
 	def onKeyboardEvent(self, event):
-
+		
 		# 预先捕捉的事件处理
 		if self.control.start == False:		# 进入帮助页
 			if self.control.helpPage == False:
@@ -817,6 +903,13 @@ class Graph():
 					state = HIDDEN
 				)
 				return
+		if self.control.start == True:	# 捕获 Ctrl 状态
+			if event.state == 4:
+				operationInfo = self.control.operation(event.char)
+			if self.control.pause == True:	# 暂停提示框
+				self.showPauseBox('On')
+			else:
+				self.showPauseBox('Off')
 
 		# 交给控制模块处理
 		operationInfo = self.control.operation(event.keysym)
@@ -824,6 +917,9 @@ class Graph():
 
 		# 开始
 		if self.control.start == True:
+
+			self.drawNext(self.control.generateNextBlock())
+
 			self.cv.itemconfig(
 				self.menuWindow, 
 				state = HIDDEN
@@ -838,7 +934,7 @@ class Graph():
 				self.draw()
 				self.showScore()
 
-			# 显示暂停提示框
+			# 暂停提示框
 			if self.control.pause == True:
 				self.showPauseBox('On')
 			else:
@@ -877,6 +973,7 @@ class Graph():
 						messagebox.showinfo('Message', 'You lose!')
 						os._exit(0)
 				time.sleep(self.control.getParameter()['interval'])
+
 
 
 Graph(Control(Core()))
