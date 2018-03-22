@@ -565,7 +565,7 @@ class Graph():
 		self.createStartWindow()	# 创建启动页面
 		self.createMenuWindow()		# 创建菜单页面
 		self.createGameWindow()		# 创建游戏界面
-		self.createHelpPage()
+		self.createHelpPage()		# 创建帮助页面
 		self.createPauseBox()		# 创建暂停提示框
 		self.cv.pack()
 
