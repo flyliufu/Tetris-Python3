@@ -379,7 +379,7 @@ class Control():
 					self.core.rotate(self.block)
 
 			# 暂停
-			if key == 'p':
+			if key == 'p' or key == 'P':
 				if self.pause == True:
 					self.stopThread = False
 					self.pause = False
@@ -968,7 +968,6 @@ class Graph():
 						self.control.nextBlock()
 						self.drawNext(self.control.generateNextBlock())
 						self.draw()
-						
 					else:		# 输
 						messagebox.showinfo('Message', 'You lose!')
 						os._exit(0)
