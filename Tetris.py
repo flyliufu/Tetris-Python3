@@ -293,8 +293,10 @@ class Core():
 				for j in range(1, self.column + 1):
 					self.mainMatrix[i][j] = self.mainMatrix[i - 1][j]
 			self.score += 1		# 分数增加
-			if self.interval > 0.1:
+			if self.initInterval - 0.1 * int(self.score / 10) > 0.1:
 				self.interval = self.initInterval - 0.1 * int(self.score / 10)	# 自动下落时间间隔衰减
+			else:
+				self.interval = 0.1
 			self.rmRow(startRow = row)
 		elif row == 0 or row == -1:
 			return
